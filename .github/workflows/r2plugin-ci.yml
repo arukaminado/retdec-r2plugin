@@ -180,7 +180,7 @@ jobs:
               id: r2plugin-cache
               uses: actions/cache@v1
               env:
-                  cache-name: r2plugin-cache
+                  cache-name: r2plugin-cache-1
               with:
                   path: build/r2plugin
                   key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.type }}-${{ hashFiles('**/retdec/CMakeLists.txt') }}
@@ -207,6 +207,13 @@ jobs:
               if: matrix.os == 'macos-latest'
               run: brew install qt5
 
+            - name: Install Qt
+              if: contains(matrix.os, 'windows')
+              uses: jurplel/install-qt-action@v2
+              with:
+                  host: 'windows'
+                  dir: '${{ github.workspace }}/build/qt'
+
             - name: Build CMake
               if: steps.r2plugin-cache.cache-hit != 'true' && matrix.os != 'windows-latest'
               run: |
@@ -230,10 +237,11 @@ jobs:
                     cmake ..\.. `
                         -DCMAKE_INSTALL_PREFIX="$HOME/.local" `
                         -DBUILD_BUNDLED_RETDEC=ON `
-                        -DBUILD_CUTTER_PLUGIN=OFF `
+                        -DBUILD_CUTTER_PLUGIN=ON `
                         -DCMAKE_BUILD_TYPE=release `
                         -DRETDEC_INSTALL_PREFIX=install `
-                        -DRADARE_INSTALL_PATH="..\radare2"
+                        -DRADARE_INSTALL_PATH="..\radare2" `
+                        -DCMAKE_PREFIX_PATH="..\qt"
               working-directory: build/r2plugin
 
             - name: Build Step Make on Ubuntu
@@ -285,7 +293,7 @@ jobs:
               id: r2plugin-cache
               uses: actions/cache@v1
               env:
-                  cache-name: r2plugin-cache
+                  cache-name: r2plugin-cache-1
               with:
                   path: build/r2plugin
                   key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.type }}-${{ hashFiles('**/retdec/CMakeLists.txt') }}
@@ -337,6 +345,16 @@ jobs:
             - name: Install Qt5 on macOS
               if: matrix.os == 'macos-latest'
               run: brew install qt5
+
+            - name: Install Qt
+              if: contains(matrix.os, 'windows')
+              uses: jurplel/install-qt-action@v2
+              with:
+                  host: 'windows'
+                  dir: '${{ github.workspace }}/build/qt'
+            - name: Install Qt5 on Windows
+              if: matrix.os == 'windows-latest'
+              run: C:\msys64\usr\bin\pacman -S mingw-w64-x86_64-qt5 --noconfirm
 
             - name: Install Cached RetDec R2Plugin on Ubuntu
               if: matrix.os == 'ubuntu-latest'
