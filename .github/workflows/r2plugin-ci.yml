@@ -76,13 +76,13 @@ jobs:
 
             - name: Build Radare2 on Ubuntu
               if: (steps.radare2-cache.outputs.cache-hit != 'true' )
-                        && (matrix.os == 'ubuntu-latest')
+                        && contains(matrix.os, 'ubuntu')
               run: make -j $(nproc) && make install
               working-directory: build/radare2
 
             - name: Build Radare2 on macOS
               if: (steps.radare2-cache.outputs.cache-hit != 'true')
-                        && (matrix.os == 'macos-latest')
+                        && contains(matrix.os, 'macos')
               run: make -j $(sysctl -n hw.ncpu) && make install
               working-directory: build/radare2
 
@@ -115,28 +115,28 @@ jobs:
                   key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/requirements.txt') }}
 
             - name: Install Missing Packages on Ubuntu
-              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-latest'
+              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && contains(matrix.os, 'ubuntu')
               run: |
                     sudo apt-get update
                     sudo apt-get install python3-venv
 
             - name: Install virtualenv on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: python -m pip install virtualenv
 
             - name: Create Virtual Environemnt
-              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && matrix.os != 'windows-latest'
+              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && contains(matrix.os, 'windows') == false
               run: python3 -m venv .venv
               working-directory: build/retdec-regression-tests-framework
 
             - name: Create Virtual Environemnt
-              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'
+              if: steps.retdec-fw-cache.outputs.cache-hit != 'true' && contains(matrix.os, 'windows')
               run: python -m venv .venv
               working-directory: build/retdec-regression-tests-framework
 
             - name: Install Requirements
               if: steps.retdec-fw-cache.outputs.cache-hit != 'true'
-                    && matrix.os != 'windows-latest'
+                    && contains(matrix.os, 'windows') == false
               run: |
                     . .venv/bin/activate
                     pip3 install wheel
@@ -146,7 +146,7 @@ jobs:
 
             - name: Install Requirements on Windows
               if: steps.retdec-fw-cache.outputs.cache-hit != 'true'
-                    && matrix.os == 'windows-latest'
+                    && contains(matrix.os, 'windows')
               run: |
                     .venv\Scripts\activate
                     pip3 install wheel
@@ -195,16 +195,16 @@ jobs:
                   key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/radare2.version') }}
 
             - name: Install Missing Packages on macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: brew install pkg-config autoconf automake libtool
 
               # Qt is needed for the Cutter Plugin
             - name: Install Qt5 on Ubuntu
-              if: matrix.os == 'ubuntu-latest'
+              if: contains(matrix.os, 'ubuntu')
               run: sudo apt install qt5-default
 
             - name: Install Qt5 on macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: brew install qt5
 
             - name: Install Qt
@@ -215,7 +215,7 @@ jobs:
                   dir: '${{ github.workspace }}/build/qt'
 
             - name: Build CMake
-              if: steps.r2plugin-cache.cache-hit != 'true' && matrix.os != 'windows-latest'
+              if: steps.r2plugin-cache.cache-hit != 'true' && contains(matrix.os, 'windows') == false
               run: |
                     # Next line is only for macOS
                     export PATH=/usr/local/opt/qt/bin:${PATH}
@@ -232,7 +232,7 @@ jobs:
               working-directory: build/r2plugin
 
             - name: Build CMake on Windows
-              if: steps.r2plugin-cache.cache-hit != 'true' && matrix.os == 'windows-latest'
+              if: steps.r2plugin-cache.cache-hit != 'true' && contains(matrix.os, 'windows')
               run: |
                     cmake ..\.. `
                         -DCMAKE_INSTALL_PREFIX="$HOME/.local" `
@@ -245,17 +245,17 @@ jobs:
               working-directory: build/r2plugin
 
             - name: Build Step Make on Ubuntu
-              if: matrix.os == 'ubuntu-latest'
+              if: contains(matrix.os, 'ubuntu')
               run: make -j$(nproc) install
               working-directory: build/r2plugin
 
             - name: Build Step Make on macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: make -j $(sysctl -n hw.ncpu) install
               working-directory: build/r2plugin
 
             - name: Build Step Make on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: cmake --build . --config Release --target install -- -m
               working-directory: build/r2plugin
 
@@ -299,7 +299,7 @@ jobs:
                   key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.type }}-${{ hashFiles('**/retdec/CMakeLists.txt') }}
 
             - name: Prepare Ubuntu
-              if: matrix.os == 'ubuntu-latest'
+              if: contains(matrix.os, 'ubuntu')
               run: |
                     sudo apt-get update
                     sudo apt-get install gcc-multilib # Install x86 binaries support on Ubuntu
@@ -307,30 +307,30 @@ jobs:
               working-directory: build
 
             - name: Prepare macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: wget --no-proxy https://releases.llvm.org/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz -O llvm.tar.xz
               working-directory: build
 
             - name: Prepare Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: curl https://releases.llvm.org/3.9.1/LLVM-3.9.1-win64.exe -o llvm.exe
               shell: cmd
               working-directory: build
 
             - name: Prepare Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: |
                   C:\msys64\usr\bin\pacman -S mingw-w64-i686-gcc --noconfirm
                   C:\msys64\usr\bin\pacman -S mingw-w64-x86_64-gcc --noconfirm
                   choco install 7zip
 
             - name: Extract Clang
-              if: matrix.os != 'windows-latest'
+              if: contains(matrix.os, 'windows') == false
               run: tar -xJf llvm.tar.xz && mv clang* clang
               working-directory: build
 
             - name: Extract Clang on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: |
                     mkdir clang
                     cd clang
@@ -339,11 +339,11 @@ jobs:
 
               # Qt is needed for the Cutter Plugin
             - name: Install Qt5 on Ubuntu
-              if: matrix.os == 'ubuntu-latest'
+              if: contains(matrix.os, 'ubuntu')
               run: sudo apt install qt5-default
 
             - name: Install Qt5 on macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: brew install qt5
 
             - name: Install Qt
@@ -353,26 +353,26 @@ jobs:
                   host: 'windows'
                   dir: '${{ github.workspace }}/build/qt'
             - name: Install Qt5 on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: C:\msys64\usr\bin\pacman -S mingw-w64-x86_64-qt5 --noconfirm
 
             - name: Install Cached RetDec R2Plugin on Ubuntu
-              if: matrix.os == 'ubuntu-latest'
+              if: contains(matrix.os, 'ubuntu')
               run: make -j$(nproc) install
               working-directory: build/r2plugin
 
             - name: Install Cached RetDec R2Plugin on macOS
-              if: matrix.os == 'macos-latest'
+              if: contains(matrix.os, 'macos')
               run: make -j $(sysctl -n hw.ncpu) install
               working-directory: build/r2plugin
 
             - name: Install Cached RetDec R2Plugin on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: cmake --build . --config Release --target install -- -m
               working-directory: build/r2plugin
 
             - name: Verify Installation of R2plugin
-              if: matrix.os != 'windows-latest'
+              if: contains(matrix.os, 'windows') == false
               run: ls ${HOME}/.local/share/radare2/plugins/core_retdec.so || ls ${HOME}/.local/share/radare2/plugins/core_retdec.dylib
 
             # Prepare files for publishing, resulting structure:
@@ -427,7 +427,7 @@ jobs:
                   key: ${{ runner.os }}-${{ env.cache-name }}
 
             - name: Prepare Test settings
-              if: matrix.os != 'windows-latest'
+              if: contains(matrix.os, 'windows') == false
               run: |
                     cat <<EOF > ${PWD}/build/retdec-regression-tests-framework/config_local.ini
                     [runner]
@@ -446,7 +446,7 @@ jobs:
                     EOF
 
             - name: Prepare Test settings on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: |
                     $PWD = (Get-Location).path
                     echo "[runner]
@@ -465,14 +465,14 @@ jobs:
                         > "$($(Get-Location).path)\build\retdec-regression-tests-framework\config_local.ini"
 
             - name: Verify configuration on Windows
-              if: matrix.os == 'windows-latest'
+              if: contains(matrix.os, 'windows')
               run: |
                     cat "$($(Get-Location).path)\build\retdec-regression-tests-framework\config_local.ini"
                     ls build
                     ls build/clang
 
             - name: Run tests
-              if: matrix.os != 'windows-latest'
+              if: contains(matrix.os, 'windows') == false
               run: |
                     . .venv/bin/activate
                     export PATH=${PWD}/../radare2/bin:${PATH}
@@ -486,7 +486,7 @@ jobs:
               # When this error is resolved removing `false` should result in
               # tests being enabled.
             - name: Run tests on Windows
-              if: false && matrix.os == 'windows-latest'
+              if: false && contains(matrix.os, 'windows')
               run: |
                     $nixPath = ((($(Get-Location).path -replace "\\","/") -replace "C:","/c") -replace "D:","/d")
                     C:\msys64\usr\bin\bash.exe -l -c "
