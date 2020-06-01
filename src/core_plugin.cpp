@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <mutex>
@@ -136,7 +137,7 @@ std::pair<std::string,  fs::path> fetchRDPathAndInterpret()
  *                            temporary directory DecompilationError is
  *                            thrown.
  */
-fs::path getOutDirPath()
+fs::path getOutDirPath(const fs::path &suffix)
 {
 	std::error_code err;
 
@@ -150,6 +151,9 @@ fs::path getOutDirPath()
 				+outDir
 			);
 		}
+
+		outDirPath /= suffix;
+		fs::create_directories(outDirPath);
 
 		return outDirPath;
 	}
@@ -174,6 +178,9 @@ fs::path getOutDirPath()
 		}
 	}
 
+	tmpDir /= suffix;
+	fs::create_directories(tmpDir);
+
 	return tmpDir;
 }
 
@@ -186,15 +193,27 @@ fs::path getOutDirPath()
  */
 RAnnotatedCode* decompile(const R2InfoProvider &binInfo)
 {
+	auto currFunc = binInfo.fetchCurrentFunction().getName();
+	std::string binName = binInfo.fetchFilePath();
+
+	std::ostringstream str;
+	str << std::hex << std::hash<std::string>{}(binName);
+
+	auto outName = fs::path(str.str())/currFunc;
+	std::cout << outName.string() << std::endl;;
+
 	try {
 		R2CGenerator outgen;
-		auto outDir = getOutDirPath();
+		auto outDir = getOutDirPath(outName);
+		if (fs::is_regular_file(outDir/"rd_dec.json")) {
+			return outgen.generateOutput(outDir/"rd_dec.json");
+		}
+
 		auto config = retdec::config::Config::empty(
 				(outDir/"rd_config.json").string());
 
 		auto [interpret, rdpath] = fetchRDPathAndInterpret();
 
-		std::string binName = binInfo.fetchFilePath();
 		binInfo.fetchFunctionsAndGlobals(config);
 		config.generateJsonFile();
 
