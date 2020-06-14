@@ -41,7 +41,7 @@ static void printHelp(const RCore &core)
 		CMD_PREFIX, "o", "# Decompile current function side by side with offsets.",
 		CMD_PREFIX, "*", "# Decompiled code is returned to r2 as a comment.",
 		"Environment:", "", "",
-		"%RETDEC_PATH" , "", "# Path to the RetDec decompiler script.",
+		"%RETDEC_PATH" , "", "# Path to the RetDec decompiler executable.",
 		"%DEC_SAVE_DIR", "", "# Directory to save decompilation into.",
 		NULL
 	};
@@ -50,20 +50,20 @@ static void printHelp(const RCore &core)
 }
 
 /**
- * @brief Fetches path of the RetDec decompiler script (retdec-decompiler.py).
+ * @brief Fetches path of the RetDec decompiler executable (retdec-decompiler.py).
  *
  * Decompiler cript is search for in following:
  *   1. Environemnt variable RETDEC_PATH.
  *     - This provides option to dynamically change RetDec's version.
  *   2. During compilation set RETEC_INSTALL_PREFIX.
- *     - This is path where decompiler script will be used when no environment
+ *     - This is path where decompiler executable will be used when no environment
  *       variable is provided. Typically it is equal to CMAKE_INSTALL_PREFIX,
  *       however, user might provide their own path.
  *
- * @throws DecompilationError If the RetDec decompiler script is not found in
+ * @throws DecompilationError If the RetDec decompiler executable is not found in
  *                            the specified path (environment, compiled path, ...).
  */
-std::pair<std::string,  fs::path> fetchRDPathAndInterpret()
+std::optional<fs::path> checkCustomRetDecPath()
 {
 	// If user specified environment variable then use it primarily.
 	auto userCustomRaw = getenv("RETDEC_PATH");
@@ -74,52 +74,10 @@ std::pair<std::string,  fs::path> fetchRDPathAndInterpret()
 		if (!fs::is_regular_file(userCustomPath))
 			throw DecompilationError("invalid $RETDEC_PATH set: "+userCustom);
 
-		return {"python", userCustomPath};
+		return userCustomPath;
 	}
 
-#if defined(RETDEC_INSTALL_PREFIX)
-	// If user wanted to install bundled RetDec with retdec-r2plugin.
-	auto rddef = fs::path(RETDEC_INSTALL_PREFIX)/"bin"/"retdec-decompiler.py";
-	if (fs::is_regular_file(rddef))
-		return {"python", rddef};
-#endif
-#if defined(PLUGIN_INSTALL_PREFIX)
-	auto pluginPrefix = fs::path(PLUGIN_INSTALL_PREFIX)/"bin"/"retdec-decompiler.py";
-
-	if (fs::is_regular_file(pluginPrefix))
-		return {"python", pluginPrefix};
-#endif
-	auto homeDirRaw = getenv("HOME");
-	if (homeDirRaw == nullptr)
-		homeDirRaw = getenv("HOMEPATH");
-
-	if (homeDirRaw != nullptr) {
-		std::string homeDir(homeDirRaw);
-		auto localInstall = fs::path(homeDir)/".local"/"bin"/"retdec-decompiler.py";
-
-		if (fs::is_regular_file(localInstall))
-			return {"python", localInstall};
-	}
-
-	try {
-		ce::execute(
-			"",
-			"retdec-decompiler.py",
-			{"--help"},
-			ce::NUL,
-			ce::NUL
-		);
-
-		return {"retdec-decompiler.py", ""};
-	}
-	catch (const ExecutionError &e) {
-	}
-
-	throw DecompilationError(
-		"cannot detect RetDec decompiler script."
-		"Please set $RETDEC_PATH to the path "
-		"of the retdec-decompiler.py script."
-	);
+	return {};
 }
 
 /**
@@ -177,22 +135,12 @@ fs::path getOutDirPath()
 	return tmpDir;
 }
 
-/**
- * @brief Main decompilation method. Uses RetDec to decompile input binary.
- *
- * Decompiles binary on input by configuring and calling RetDec decompiler script.
- *
- * @param binInfo Provides informations gathered from r2 console.
- */
-RAnnotatedCode* decompile(const R2InfoProvider &binInfo)
+RAnnotatedCode* decompileWithScript(const fs::path &rdpath, const R2InfoProvider &binInfo)
 {
-	try {
 		R2CGenerator outgen;
 		auto outDir = getOutDirPath();
 		auto config = retdec::config::Config::empty(
 				(outDir/"rd_config.json").string());
-
-		auto [interpret, rdpath] = fetchRDPathAndInterpret();
 
 		std::string binName = binInfo.fetchFilePath();
 		binInfo.fetchFunctionsAndGlobals(config);
@@ -210,7 +158,7 @@ RAnnotatedCode* decompile(const R2InfoProvider &binInfo)
 		std::vector<std::string> decparams {
 			ce::sanitizePath(binName),
 			"--cleanup",
-			"--config", ce::sanitizePath(config.getConfigFileName()),
+			"--config", ce::sanitizePath(config.generateJsonFile()),
 			"-f", "json-human",
 			//"--select-decode-only",
 			"--select-ranges", decrange.str(),
@@ -219,13 +167,30 @@ RAnnotatedCode* decompile(const R2InfoProvider &binInfo)
 		};
 
 		ce::execute(
-			interpret,
+			"",
 			ce::sanitizePath(rdpath.string()),
 			decparams,
 			ce::sanitizePath(outpath.string()),
 			ce::sanitizePath(errpath.string())
 		);
 		return outgen.generateOutput(decpath.string());
+}
+
+/**
+ * @brief Main decompilation method. Uses RetDec to decompile input binary.
+ *
+ * Decompiles binary on input by configuring and calling RetDec decompiler executable.
+ *
+ * @param binInfo Provides informations gathered from r2 console.
+ */
+RAnnotatedCode* decompile(const R2InfoProvider &binInfo)
+{
+	try {
+		if (auto rdpath = checkCustomRetDecPath()) {
+			return decompileWithScript(*rdpath, binInfo);
+		}
+
+		throw DecompilationError("Not implemented path");
 	}
 	catch (const std::exception &err) {
 		std::cerr << "retdec-r2plugin: decompilation was not successful: " << err.what() << std::endl;
