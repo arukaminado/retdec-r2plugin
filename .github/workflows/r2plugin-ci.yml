@@ -155,8 +155,7 @@ jobs:
               working-directory: build/retdec-regression-tests-framework
 
     ## Build of the RetDec-R2plugin and bundled RetDec.
-    ## The build is cached so that RetDec is not built on each change in master.
-    ## Cached build is completly rebuilt in case of update of bundled RetDec version.
+    ## After that runs tests.
     build-r2plugin:
         runs-on: ${{ matrix.os }}
 
@@ -175,15 +174,6 @@ jobs:
 
             - name: Create Build Directory
               run: mkdir -p build/r2plugin
-
-            - name: Create/Check Cache of RetDec R2plugin
-              id: r2plugin-cache
-              uses: actions/cache@v1
-              env:
-                  cache-name: r2plugin-cache
-              with:
-                  path: build/r2plugin
-                  key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.type }}-${{ hashFiles('**/retdec/CMakeLists.txt') }}
 
             - name: Extract Radare2 Installation
               id: radare2-cache
@@ -251,45 +241,6 @@ jobs:
               run: cmake --build . --config Release --target install -- -m
               working-directory: build/r2plugin
 
-    ## Run tests on RetDec R2plugin
-    ## After this step artifacts are published.
-    run-tests:
-        runs-on: ${{ matrix.os }}
-
-        strategy:
-            matrix:
-                os: [ubuntu-latest, macos-latest, windows-latest]
-                type: [Release, Debug]
-
-            # Let other builds finish.
-            fail-fast: false
-
-        needs: [prepare-radare2, prepare-retdec-framework, build-r2plugin]
-
-        steps:
-            - uses: actions/checkout@v2
-
-            - name: Create Build Directory
-              run: mkdir -p build
-
-            - name: Extract Radare2 Cache
-              id: radare2-cache
-              uses: actions/cache@v1
-              env:
-                  cache-name: radare2-chb
-              with:
-                  path: build/radare2
-                  key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/radare2.version') }}
-
-            - name: Extract R2Plugin Cache
-              id: r2plugin-cache
-              uses: actions/cache@v1
-              env:
-                  cache-name: r2plugin-cache
-              with:
-                  path: build/r2plugin
-                  key: ${{ runner.os }}-${{ env.cache-name }}-${{ matrix.type }}-${{ hashFiles('**/retdec/CMakeLists.txt') }}
-
             - name: Prepare Ubuntu
               if: matrix.os == 'ubuntu-latest'
               run: |
@@ -337,21 +288,6 @@ jobs:
             - name: Install Qt5 on macOS
               if: matrix.os == 'macos-latest'
               run: brew install qt5
-
-            - name: Install Cached RetDec R2Plugin on Ubuntu
-              if: matrix.os == 'ubuntu-latest'
-              run: make -j$(nproc) install
-              working-directory: build/r2plugin
-
-            - name: Install Cached RetDec R2Plugin on macOS
-              if: matrix.os == 'macos-latest'
-              run: make -j $(sysctl -n hw.ncpu) install
-              working-directory: build/r2plugin
-
-            - name: Install Cached RetDec R2Plugin on Windows
-              if: matrix.os == 'windows-latest'
-              run: cmake --build . --config Release --target install -- -m
-              working-directory: build/r2plugin
 
             - name: Verify Installation of R2plugin
               if: matrix.os != 'windows-latest'
