@@ -2,9 +2,14 @@ cmake_minimum_required(VERSION 3.8)
 
 include(FetchContent)
 
+# TODO: set to master
+#
+# While RAnnotatedCode is not merged in cutter master
+# we are dependant on specific branch
+#
 FetchContent_Declare(cutter
 	GIT_REPOSITORY https://github.com/radareorg/cutter
-	GIT_TAG v1.10.3
+	GIT_TAG decompiler-refactoring
 )
 
 FetchContent_GetProperties(cutter)
