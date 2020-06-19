@@ -9,7 +9,7 @@ include(FetchContent)
 #
 FetchContent_Declare(cutter
 	GIT_REPOSITORY https://github.com/radareorg/cutter
-	GIT_TAG decompiler-refactoring
+	GIT_TAG master
 )
 
 FetchContent_GetProperties(cutter)
