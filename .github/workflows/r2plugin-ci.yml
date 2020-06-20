@@ -355,7 +355,9 @@ jobs:
 
             - name: Verify Installation of R2plugin
               if: matrix.os != 'windows-latest'
-              run: ls ${HOME}/.local/share/radare2/plugins/core_retdec.so || ls ${HOME}/.local/share/radare2/plugins/core_retdec.dylib
+              run: |
+                    ls ${HOME}/.local/share/radare2/plugins/core_retdec.so || ls ${HOME}/.local/share/radare2/plugins/core_retdec.dylib
+                    ls ~/.local/bin
 
             # Prepare files for publishing, resulting structure:
             #   RetDec-R2Plugin-OS-Type
